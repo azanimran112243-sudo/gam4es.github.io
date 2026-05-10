@@ -10,7 +10,7 @@
             width: 100%; height: 100%;
             background-color: #000;
             overflow: hidden;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
         }
 
         .container {
@@ -26,50 +26,51 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
+            z-index: 1;
+        }
+
+        /* The Small Camera Window */
+        #input_video {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 120px; /* Adjust size for mobile */
+            height: auto;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            z-index: 10;
+            transform: scaleX(-1); /* Mirror view for natural feel */
+            background: #111;
         }
 
         .ui-panel {
             position: absolute;
-            bottom: 40px;
+            bottom: 160px; /* Moved up to clear the camera window */
             text-align: center;
             width: 100%;
             pointer-events: none;
+            z-index: 5;
         }
 
         #status {
             color: #fff;
-            font-size: 1.2rem;
+            font-size: 1rem;
             text-transform: uppercase;
-            letter-spacing: 0.3em;
+            letter-spacing: 0.2em;
             text-shadow: 0 0 10px rgba(255,255,255,0.5);
-            transition: all 0.3s ease;
-        }
-
-        /* Subtle indicator that camera is active */
-        .cam-indicator {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 10px;
-            height: 10px;
-            background: #ff0000;
-            border-radius: 50%;
-            box-shadow: 0 0 8px #ff0000;
         }
     </style>
-    <!-- MediaPipe Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
 <div class="container">
-    <div class="cam-indicator"></div>
-    <video id="input_video" style="display:none;"></video>
+    <video id="input_video" autoplay playsinline></video>
     <canvas id="output_canvas"></canvas>
     
     <div class="ui-panel">
-        <p id="status">INITIALIZING DOMAIN...</p>
+        <p id="status">AWAITING GESTURE</p>
     </div>
 </div>
 
@@ -79,34 +80,25 @@ const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
 const statusText = document.getElementById('status');
 
-// Image Assets
 const img = {
-    red: new Image(),
-    purple: new Image(),
-    blue: new Image(),
-    raga: new Image()
+    red: new Image(), purple: new Image(),
+    blue: new Image(), raga: new Image()
 };
 img.red.src = 'red.png';
 img.purple.src = 'purple.png';
 img.blue.src = 'blue.png';
 img.raga.src = 'raga.png';
 
-// Check if hand is a "Fist" (Closed)
 function isFist(landmarks) {
-    const fingerTips = [8, 12, 16, 20]; // Index, Middle, Ring, Pinky tips
-    const fingerIPs = [6, 10, 14, 18];  // Knuckle joints
-    
-    // If tips are lower than the knuckles, the hand is closed
+    const fingerTips = [8, 12, 16, 20];
+    const fingerIPs = [6, 10, 14, 18];
     let closedFingers = 0;
     for (let i = 0; i < fingerTips.length; i++) {
-        if (landmarks[fingerTips[i]].y > landmarks[fingerIPs[i]].y) {
-            closedFingers++;
-        }
+        if (landmarks[fingerTips[i]].y > landmarks[fingerIPs[i]].y) closedFingers++;
     }
-    return closedFingers >= 3; 
+    return closedFingers >= 3;
 }
 
-// Count extended fingers
 function countFingers(landmarks) {
     const tips = [8, 12, 16, 20];
     let count = 0;
@@ -119,39 +111,28 @@ function countFingers(landmarks) {
 function onResults(results) {
     canvasElement.width = window.innerWidth;
     canvasElement.height = window.innerHeight;
-    
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         const hands = results.multiHandLandmarks;
 
-        // MAHORAGA: 2 Closed Hands
         if (hands.length === 2 && isFist(hands[0]) && isFist(hands[1])) {
-            drawEffect(img.raga, 500);
-            statusText.innerText = "With this treasure, I summon...";
-            statusText.style.color = "#00ffcc";
-        } 
-        // INDIVIDUAL TECHNIQUES
-        else {
+            drawEffect(img.raga, 450);
+            statusText.innerText = "With this treasure...";
+        } else {
             const fingers = countFingers(hands[0]);
-            statusText.style.color = "#fff";
-
             if (fingers === 1) {
-                drawEffect(img.blue, 250);
-                statusText.innerText = "Cursed Technique Lapse: Blue";
+                drawEffect(img.blue, 220);
+                statusText.innerText = "Blue";
             } else if (fingers === 2) {
-                drawEffect(img.red, 250);
-                statusText.innerText = "Cursed Technique Reversal: Red";
+                drawEffect(img.red, 220);
+                statusText.innerText = "Red";
             } else if (fingers >= 4) {
-                drawEffect(img.purple, 400);
-                statusText.innerText = "Hollow Technique: Purple";
-            } else {
-                statusText.innerText = "Ready to Manifest";
+                drawEffect(img.purple, 350);
+                statusText.innerText = "Purple";
             }
         }
-    } else {
-        statusText.innerText = "Awaiting Gesture";
     }
     canvasCtx.restore();
 }
@@ -170,21 +151,20 @@ const hands = new Hands({
 hands.setOptions({
     maxNumHands: 2,
     modelComplexity: 1,
-    minDetectionConfidence: 0.75,
-    minTrackingConfidence: 0.75
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.7
 });
-
 hands.onResults(onResults);
 
 const camera = new Camera(videoElement, {
     onFrame: async () => {
         await hands.send({image: videoElement});
     },
-    width: 1280,
-    height: 720
+    width: 640,
+    height: 480,
+    facingMode: "user"
 });
 camera.start();
 </script>
-
 </body>
 </html>
